@@ -11,8 +11,8 @@ body {
 }
 
 .phone-container {
-  width: 360px;
-  height: 700px;
+  width: 760px;
+  height: 1000px;
   background-color: #000;
   border: 1px solid #333;
   border-radius: 20px;
@@ -33,7 +33,7 @@ h2 {
 
 .parking-lot {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(10, 1fr);
   gap: 10px;
   margin-top: 20px;
   justify-items: center;
@@ -122,17 +122,23 @@ h2 {
   background-color: darkred;
 }
 .parking-image {
-  grid-column: span 4;
-  justify-self: stretch;
+  grid-column: 1 / -1;     /* Ocupa toda la fila (20 cupos) */
   width: 100%;
+  height: 80px;            /* Altura proporcional a los cupos */
+  margin: 6px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .parking-image img {
   width: 100%;
-  height: auto;
-  object-fit: contain;
-  border-radius: 5px;
+  height: 100%;
+  object-fit: fill;         /* ESTIRA la imagen sin dejar bordes */
+  border-radius: 8px;
+  display: block;
 }
+
 .parking-spot.libre {
   background-color: green;
   border-color: green;

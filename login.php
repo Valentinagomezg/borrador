@@ -2,16 +2,14 @@
 // Incluye el archivo con la conexión a la base de datos
 include 'conexion.php';
 
-// Inicia la sesión para guardar datos del usuario si inicia sesión con éxito
+// Inicia la sesión
 session_start();
 
 // ------------------- RECOGER DATOS DEL FORMULARIO -------------------
-
 $email = trim($_POST['email']);
 $contrasena = trim($_POST['password']);
 
-// ------------------- CONSULTAR USUARIO EN LA BASE DE DATOS -------------------
-
+// ------------------- CONSULTAR USUARIO -------------------
 $sql = "SELECT * FROM usuarios WHERE email = ?";
 $stmt = $conexion->prepare($sql);
 $stmt->bind_param("s", $email);
@@ -22,15 +20,20 @@ if ($resultado->num_rows > 0) {
     $usuario = $resultado->fetch_assoc();
 
     if (password_verify($contrasena, $usuario['contrasena'])) {
-        // Guarda datos del usuario en la sesión
+        // Guardar datos en la sesión
         $_SESSION['id_usuario'] = $usuario['id_usuario'];
         $_SESSION['rol'] = $usuario['rol'];
 
-        // También guarda en localStorage usando JavaScript
+        // Guardar también en localStorage y redirigir según el rol
         echo "<script>
             localStorage.setItem('id_usuario', '{$usuario['id_usuario']}');
             localStorage.setItem('rol', '{$usuario['rol']}');
-            window.location.href = 'cupo.php';
+
+            if ('{$usuario['rol']}' === 'administrador') {
+                window.location.href = 'admin.php';
+            } else {
+                window.location.href = 'cupo.php';
+            }
         </script>";
         exit();
     } else {
@@ -49,3 +52,4 @@ if ($resultado->num_rows > 0) {
 $stmt->close();
 $conexion->close();
 ?>
+

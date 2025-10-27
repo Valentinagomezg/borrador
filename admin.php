@@ -1,13 +1,13 @@
 <?php
 session_start();
 
-// Verificar si el usuario es administrador
+// ---------------- VERIFICAR ROL ----------------
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'administrador') {
     header('Location: index.html');
     exit();
 }
 
-// Conexión a la base de datos
+// ---------------- CONEXIÓN BD ----------------
 $host = "localhost";
 $user = "root";
 $password = "";
@@ -18,16 +18,21 @@ if ($conn->connect_error) {
     die("Conexión fallida: " . $conn->connect_error);
 }
 
-// Obtener cupos ocupados
+// ---------------- CUPOS OCUPADOS ----------------
+// Solo los cupos con estado ACTIVO deben mostrarse ocupados
 $ocupados = [];
-$resultCupos = $conn->query("SELECT numero_cupo FROM reservas");
+$resultCupos = $conn->query("SELECT numero_cupo FROM reservas WHERE estado = 'activo'");
 if ($resultCupos) {
     while ($row = $resultCupos->fetch_assoc()) {
         $ocupados[] = (int)$row['numero_cupo'];
     }
 }
 
-// Obtener usuarios
+$totalCupos = 1000;
+$totalOcupados = count($ocupados);
+$totalLibres = $totalCupos - $totalOcupados;
+
+// ---------------- USUARIOS ----------------
 $usuarios = [];
 $resultUsuarios = $conn->query("SELECT id_usuario, nombre FROM usuarios");
 if ($resultUsuarios) {
@@ -36,7 +41,7 @@ if ($resultUsuarios) {
     }
 }
 
-// Eliminar usuario si se recibe solicitud POST
+// ---------------- ELIMINAR USUARIO ----------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_id'])) {
     $idEliminar = (int)$_POST['eliminar_id'];
 
@@ -48,7 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_id'])) {
     }
 }
 
-// Obtener pagos por método
+// ---------------- PAGOS ----------------
+// Contamos todos los pagos (sin importar estado)
 $pagos = [
     "nequi" => 0,
     "tarjeta" => 0
@@ -64,6 +70,37 @@ if ($resultPagos) {
     }
 }
 
+// ---------------- HORAS OCUPADAS ----------------
+$horaMasOcupada = "Sin datos";
+$maxOcupacion = 0;
+$resultHorasMas = $conn->query("
+    SELECT HOUR(fecha_reserva) AS hora, COUNT(*) AS total
+    FROM reservas
+    GROUP BY HOUR(fecha_reserva)
+    ORDER BY total DESC
+    LIMIT 1
+");
+if ($resultHorasMas && $resultHorasMas->num_rows > 0) {
+    $data = $resultHorasMas->fetch_assoc();
+    $horaMasOcupada = sprintf("%02d:00", $data['hora']);
+    $maxOcupacion = $data['total'];
+}
+
+$horaMenosOcupada = "Sin datos";
+$minOcupacion = 0;
+$resultHorasMenos = $conn->query("
+    SELECT HOUR(fecha_reserva) AS hora, COUNT(*) AS total
+    FROM reservas
+    GROUP BY HOUR(fecha_reserva)
+    ORDER BY total ASC
+    LIMIT 1
+");
+if ($resultHorasMenos && $resultHorasMenos->num_rows > 0) {
+    $dataMenos = $resultHorasMenos->fetch_assoc();
+    $horaMenosOcupada = sprintf("%02d:00", $dataMenos['hora']);
+    $minOcupacion = $dataMenos['total'];
+}
+
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -72,6 +109,23 @@ $conn->close();
   <meta charset="UTF-8" />
   <title>Panel Administrador</title>
   <link rel="stylesheet" href="css/admin.css" />
+  <style>
+    #estadisticas {
+      background-color: #111;
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    #estadisticas ul {
+      list-style: none;
+      padding: 0;
+    }
+    #estadisticas li {
+      margin: 8px 0;
+      font-size: 16px;
+    }
+  </style>
 </head>
 <body>
   <div class="phone-container">
@@ -91,19 +145,27 @@ $conn->close();
         <h2>Zona A</h2>
         <div class="parking-lot">
           <?php
-          // Generar automáticamente los 1000 cupos con imágenes cada 4
-          for ($i = 1; $i <= 1000; $i++) {
+          // Generar los 1000 cupos con numeración
+          for ($i = 1; $i <= $totalCupos; $i++) {
               echo '<div class="parking-spot" data-cupo="' . $i . '">' . $i . '</div>';
-              if ($i % 4 === 0 && $i < 1000) {
-                  echo '<div class="parking-image">
-                          <img src="imagenes/1.1.png" alt="Imagen zona A" />
-                        </div>';
-              }
           }
           ?>
         </div>
       </div>
 
+      <!-- SECCIÓN DE ESTADÍSTICAS -->
+      <section id="estadisticas">
+        <h2>📊 Estadísticas del Parqueadero</h2>
+        <ul>
+          <li><strong>Total de cupos:</strong> <?= $totalCupos ?></li>
+          <li><strong>Cupos ocupados:</strong> <?= $totalOcupados ?></li>
+          <li><strong>Cupos libres:</strong> <?= $totalLibres ?></li>
+          <li><strong>Hora más ocupada:</strong> <?= $horaMasOcupada ?> (<?= $maxOcupacion ?> reservas)</li>
+          <li><strong>Hora menos ocupada:</strong> <?= $horaMenosOcupada ?> (<?= $minOcupacion ?> reservas)</li>
+        </ul>
+      </section>
+
+      <!-- SECCIÓN ELIMINAR USUARIO -->
       <section class="eliminar-usuario-section">
         <h2>Eliminar Usuarios</h2>
         <form method="POST" class="eliminar-usuario-form">
@@ -126,6 +188,7 @@ $conn->close();
         </form>
       </section>
 
+      <!-- SECCIÓN PAGOS -->
       <section id="pagos-section">
         <h2>Total de Pagos</h2>
         <ul>
@@ -137,19 +200,16 @@ $conn->close();
   </div>
 
   <script>
-    // Mostrar mensaje si viene de eliminación
+    // Mensaje de eliminación
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mensaje') === 'eliminado') {
       alert('Usuario borrado exitosamente');
       window.history.replaceState(null, null, window.location.pathname);
     }
 
-    // Botón cerrar sesión
+    // Cerrar sesión
     document.querySelector(".logout-btn").addEventListener("click", () => {
-      localStorage.removeItem("id_usuario");
-      localStorage.removeItem("id_vehiculo");
-      localStorage.removeItem("cupoTemporal");
-      localStorage.removeItem("rol");
+      localStorage.clear();
       window.location.href = "index.html";
     });
 
@@ -164,7 +224,7 @@ $conn->close();
       }
     });
 
-    // Mostrar modal con info de reserva
+    // Modal con información
     document.querySelectorAll('.parking-spot.ocupado').forEach(spot => {
       spot.addEventListener('click', () => {
         const cupo = spot.getAttribute('data-cupo');
@@ -198,4 +258,3 @@ $conn->close();
 
 </body>
 </html>
-

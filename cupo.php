@@ -27,7 +27,7 @@ if (!$conn->connect_error) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Agenda tu cupo</title>
   <link rel="stylesheet" href="css/cupo.css" />
-  <link rel="icon" href="imagenes/logo-primary.png" >
+  <link rel="icon" href="imagenes/logo-primary.png">
 </head>
 <body>
   <div class="phone-container">
@@ -35,27 +35,45 @@ if (!$conn->connect_error) {
       <h1>Agenda tu cupo</h1>
       <button class="logout-btn">Cerrar sesión</button>
       <a href="tarifa.html" class="tarifas-btn">Tarifas</a>
-
-      <!-- Botón de admin oculto por defecto -->
       <a href="admin.php" class="admin-btn" id="admin-btn" style="display: none;">Admin Panel</a>
     </div>
 
     <div class="container">
-      <h2>Zona A</h2>
-      <div class="parking-lot">
-        <?php
-        // Mostrar 1000 cupos, insertando una imagen cada 4 cupos (como en tu ejemplo)
-        for ($i = 1; $i <= 1000; $i++) {
-            echo '<div class="parking-spot">' . $i . '</div>';
-
-            // Cada 4 cupos se pone la imagen decorativa
-            if ($i % 4 === 0 && $i < 1000) {
-                echo '<div class="parking-image">
-                        <img src="imagenes/1.1.png" alt="Imagen zona A" />
-                      </div>';
+      <div class="zonas">
+        <!-- 🅿 Zona A -->
+        <div class="zona">
+          <h3>Zona A</h3>
+          <div class="parking-lot" id="zonaA">
+            <?php
+            for ($i = 1; $i <= 250; $i++) {
+              echo '<div class="parking-spot" data-num="' . $i . '">' . $i . '</div>';
+              if ($i % 50 == 0) echo '<div class="internal-road"></div>';
             }
-        }
-        ?>
+            ?>
+          </div>
+        </div>
+
+        <!-- 🔄 Conexión a la carretera -->
+        <div class="conexion"></div>
+
+        <!-- 🛣 Carretera principal -->
+        <div class="calle"></div>
+
+        <!-- 🔄 Conexión a Zona B -->
+        <div class="conexion"></div>
+
+        <!-- 🅿 Zona B -->
+        <div class="zona">
+          <h3>Zona B</h3>
+          <div class="parking-lot" id="zonaB">
+            <?php
+            for ($i = 501; $i <= 1000; $i++) {
+              echo '<div class="parking-spot" data-num="' . $i . '">' . $i . '</div>';
+              if ($i % 50 == 0) echo '<div class="internal-road"></div>';
+            }
+            ?>
+          </div>
+        </div>
       </div>
 
       <div class="button-container">
@@ -74,8 +92,9 @@ if (!$conn->connect_error) {
     document.addEventListener("DOMContentLoaded", () => {
       const spots = document.querySelectorAll(".parking-spot");
 
-      spots.forEach((spot, index) => {
-        const numero = index + 1;
+      // Marcar cupos ocupados o disponibles
+      spots.forEach((spot) => {
+        const numero = parseInt(spot.dataset.num);
         if (ocupados.includes(numero)) {
           spot.classList.add("ocupado");
         } else {
@@ -101,17 +120,14 @@ if (!$conn->connect_error) {
 
       // Botón Cerrar sesión
       document.querySelector(".logout-btn").addEventListener("click", () => {
-        localStorage.removeItem("id_usuario");
-        localStorage.removeItem("id_vehiculo");
-        localStorage.removeItem("cupoTemporal");
-        localStorage.removeItem("rol");
+        localStorage.clear();
         window.location.href = "index.html";
       });
 
-      // Mostrar botón admin si el rol es administrador
+      // Mostrar panel admin si el rol es administrador
       const rol = localStorage.getItem("rol");
       if (rol === "administrador") {
-          window.location.href = "admin.php";
+        document.getElementById("admin-btn").style.display = "inline-block";
       }
     });
   </script>
